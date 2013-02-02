@@ -21,6 +21,8 @@ dmenu \- dynamic menu
 .RB [ \-sf
 .IR color ]
 .RB [ \-v ]
+.RB [ \-m
+.IR monitor ]
 .P
 .BR dmenu_run " ..."
 .SH DESCRIPTION
@@ -72,6 +74,11 @@ defines the selected foreground color.
 .TP
 .B \-v
 prints version information to stdout, then exits.
+.TP
+.B \-m " monitor"
+selects a Xinerama monitor to display dmenu on, overriding the default (either
+the monitor containing the currently focused window, or the mouse cursor if no
+windows are open).
 .SH USAGE
 dmenu is completely controlled by the keyboard.  Items are selected using the
 arrow keys, page up, page down, home, and end.
