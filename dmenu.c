@@ -64,6 +64,8 @@ static XIC xic;
 static int (*fstrncmp)(const char *, const char *, size_t) = strncmp;
 static char *(*fstrstr)(const char *, const char *) = strstr;
 
+int selected_monitor = -1;
+
 int
 main(int argc, char *argv[]) {
 	Bool fast = False;
@@ -100,6 +102,8 @@ main(int argc, char *argv[]) {
 			selbgcolor = argv[++i];
 		else if(!strcmp(argv[i], "-sf"))  /* selected foreground color */
 			selfgcolor = argv[++i];
+		else if(!strcmp(argv[i], "-m"))   /* selected monitor */
+			selected_monitor = atoi(argv[++i]);
 		else
 			usage();
 
@@ -546,26 +550,30 @@ setup(void) {
 		Window w, pw, dw, *dws;
 		XWindowAttributes wa;
 
-		XGetInputFocus(dc->dpy, &w, &di);
-		if(w != root && w != PointerRoot && w != None) {
-			/* find top-level window containing current input focus */
-			do {
-				if(XQueryTree(dc->dpy, (pw = w), &dw, &w, &dws, &du) && dws)
-					XFree(dws);
-			} while(w != root && w != pw);
-			/* find xinerama screen with which the window intersects most */
-			if(XGetWindowAttributes(dc->dpy, pw, &wa))
-				for(j = 0; j < n; j++)
-					if((a = INTERSECT(wa.x, wa.y, wa.width, wa.height, info[j])) > area) {
-						area = a;
-						i = j;
-					}
+		if (selected_monitor < 0) { /* no monitor was specified */
+			XGetInputFocus(dc->dpy, &w, &di);
+			if(w != root && w != PointerRoot && w != None) {
+				/* find top-level window containing current input focus */
+				do {
+					if(XQueryTree(dc->dpy, (pw = w), &dw, &w, &dws, &du) && dws)
+						XFree(dws);
+				} while(w != root && w != pw);
+				/* find xinerama screen with which the window intersects most */
+				if(XGetWindowAttributes(dc->dpy, pw, &wa))
+					for(j = 0; j < n; j++)
+						if((a = INTERSECT(wa.x, wa.y, wa.width, wa.height, info[j])) > area) {
+							area = a;
+							i = j;
+						}
+			}
+			/* no focused window is on screen, so use pointer location instead */
+			if(!area && XQueryPointer(dc->dpy, root, &dw, &dw, &x, &y, &di, &di, &du))
+				for(i = 0; i < n; i++)
+					if(INTERSECT(x, y, 1, 1, info[i]))
+						break;
+		} else { /* choose the monitor specified on the command line */
+			i = selected_monitor;
 		}
-		/* no focused window is on screen, so use pointer location instead */
-		if(!area && XQueryPointer(dc->dpy, root, &dw, &dw, &x, &y, &di, &di, &du))
-			for(i = 0; i < n; i++)
-				if(INTERSECT(x, y, 1, 1, info[i]))
-					break;
 
 		x = info[i].x_org;
 		y = info[i].y_org + (topbar ? 0 : info[i].height - mh);
@@ -605,6 +613,7 @@ setup(void) {
 void
 usage(void) {
 	fputs("usage: dmenu [-b] [-f] [-i] [-l lines] [-p prompt] [-fn font]\n"
-	      "             [-nb color] [-nf color] [-sb color] [-sf color] [-v]\n", stderr);
+		  "             [-nb color] [-nf color] [-sb color] [-sf color] [-v]\n"
+		  "             [-m monitor]", stderr);
 	exit(EXIT_FAILURE);
 }
